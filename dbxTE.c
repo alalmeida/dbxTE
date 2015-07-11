@@ -17,6 +17,11 @@
 	default: structure and records without field names
 
  * 
+ * https://msdn.microsoft.com/en-us/library/aa975386(v=vs.71).aspx
+ * https://en.wikipedia.org/wiki/.dbf
+ * http://www.dbase.com/Knowledgebase/INT/db7_file_fmt.htm
+ * http://www.clicketyclick.dk/databases/xbase/format/dbf.html
+ * 
  */
 
 #include <stdio.h>
@@ -65,6 +70,54 @@ int x = 1;
 	return 1;
     }
 }
+
+/*
+ * Leitura do header do arquivo dbf
+ * 
+ */
+void get_header(int fd)
+{
+int n, i, j;
+unsigned char *byte;
+unsigned char tmp[4];
+int hdr_len;
+
+    n = read(fd, &hdr, sizeof(struct dbf_header));
+
+    if (big_endian()) {
+	byte = (unsigned char *) &(hdr.no_records);
+	tmp[0] = byte[3];
+	tmp[1] = byte[2];
+	tmp[2] = byte[1];
+	tmp[3] = byte[0];
+	no_records = *((int *) tmp);
+	byte = (unsigned char *) &(hdr.hdr_len);
+	tmp[0] = byte[1];
+	tmp[1] = byte[0];
+	tmp[2] = tmp[3] = 0;
+	hdr_len = *((short *) tmp);
+	byte = (unsigned char *) &(hdr.rec_len);
+	tmp[0] = byte[1];
+	tmp[1] = byte[0];
+	tmp[2] = tmp[3] = 0;
+	rec_len = *((short *) tmp);
+    } else {
+	no_records = hdr.no_records;
+	hdr_len = hdr.hdr_len;
+	rec_len = hdr.rec_len;
+    }
+
+    no_fields = (hdr_len - sizeof(struct dbf_header))
+		/ sizeof(struct field_descriptor);
+    j = (hdr_len - sizeof(struct dbf_header))
+	% sizeof(struct field_descriptor);
+
+    for (i = 0; i < no_fields; i++) {
+	n = read(fd, &fld[i], sizeof(struct field_descriptor));
+    }
+    read(fd, buf, j);
+}
+
 /*
  * 
  */
@@ -81,5 +134,33 @@ void main(int argc, char *argv[]) {
     char *fname = NULL;
     char *tname = NULL;
     int fd = 0;
+    
+    printf("xBase Tools Exporter v0.1\n");
+    printf("Andre Luiz de Almeida - alalmeida@gmail.com\n");
+    while ((c = getopt(argc, argv, "hcdfa")) != EOF) {
+	switch (c) {
+	    case 'h':
+		header_flag = 1;
+		break;
+	    case 'c':
+		data_flag = 0;
+		break;
+	    case 'd':
+		create_flag = 0;
+		break;
+	    case 'f':
+		field_names = 1;
+		break;
+	    case 'a':
+		msaccess_flag = 1;
+		create_flag = 0;
+		data_flag = 0;
+		break;
+	    case '?':
+		error_flag++;
+		break;
+	}
+    }
+
 }
 
