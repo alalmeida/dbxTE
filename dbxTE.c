@@ -31,7 +31,9 @@ short rec_len;
 char buf[MAX_REC_LEN];
 char usage[] = "usage: dbdump [-hcdfa] dbf_file table_name\nDump dBase III .dbf files into SQL commands. Records marked for\ndelete are left out from the dump.\n-h only the header of the .dbf file\n-c only the structure of the table (CREATE commands)\n-d only data records of the table (INSERT commands)\n-f list the field names in INSERT commands\n-a dump into text file suitable to import by MS Access\ndefault: structure and records without field names";
 
-
+/*
+ * Exibe a mensagem de erro e aborta o programa com o errorlevel 1
+ */
 void Error(char *message, int error_code) {
     if (message != NULL) {
 	fprintf(stderr, "%s\n", message);
@@ -42,16 +44,19 @@ void Error(char *message, int error_code) {
     exit(1);
 }
 
-
-void Warning(char *message)
-{
+/*
+ * Exibe a mensagem de alerta
+ */
+void Warning(char *message) {
     fprintf(stderr, "%s\n", message);
     fflush(stderr);
 }
 
-
-int big_endian()
-{
+/*
+ * Verifica o formato de montagem da mensagem
+ * https://pt.wikipedia.org/wiki/Extremidade_(ordena%C3%A7%C3%A3o)
+ */
+int big_endian() {
 int x = 1;
 
     if(*(char *)&x == 1) {
@@ -63,8 +68,18 @@ int x = 1;
 /*
  * 
  */
-int main(int argc, char** argv) {
-
-    return (EXIT_SUCCESS);
+void main(int argc, char *argv[]) {
+    int c;
+    extern char *optarg;
+    extern int optind;
+    int header_flag = 0;
+    int create_flag = 1;
+    int data_flag = 1;
+    int field_names = 0;
+    int msaccess_flag = 0;
+    int error_flag = 0;
+    char *fname = NULL;
+    char *tname = NULL;
+    int fd = 0;
 }
 
