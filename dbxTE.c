@@ -121,6 +121,180 @@ int hdr_len;
     read(fd, buf, j);
 }
 
+void print_info(char *file)
+{
+int i;
+
+    printf("dBase file:          %s\n", file);
+    printf("date of last update: %d/%d/%d\n", 1900 + hdr.year, hdr.month, hdr.day);
+    printf("number of records:   %d (deleted included)\n", no_records);
+    printf("length of record:    %d\n", rec_len);
+    printf("number of fields:    %d\n", no_fields);
+    printf("field definitions:\n");
+    for (i = 0; i < no_fields; i++) {
+	printf("\t%-*s  %c %d", FIELD_NAME_LENGTH, fld[i].name,
+	    fld[i].type, fld[i].length);
+	if (fld[i].decimals > 0) {
+	    printf(".%d\n", fld[i].decimals);
+	} else {
+	    printf("\n");
+	}
+    }
+    printf("\n");
+}
+
+
+void print_create(int fd, char *tname)
+{
+int i, j;
+
+    printf("CREATE TABLE %s (\n", tname);
+    for (i = 0; i < no_fields; i++) {
+	if (i > 0) {
+	    printf(",\n");
+	}
+	for (j = 0; j < FIELD_NAME_LENGTH; j++) {
+	    fld[i].name[j] = (char) tolower(fld[i].name[j]);
+	}
+	printf("\t%-15s", fld[i].name);
+	if (fld[i].type == 'C') {
+	    printf("char(%d)", fld[i].length);
+	} else if (fld[i].type == 'N') {
+	    if (fld[i].decimals <= 0) {
+		printf("int");
+	    } else {
+		printf("real");
+	    }
+	} else if (fld[i].type == 'L') {
+	     printf("int");
+	} else {
+	    printf("unknown type");
+	}
+    }
+    printf("\n)\n\n");
+}
+
+
+void print_fieldnames(int fd)
+{
+int i, j;
+
+    for (i = 0; i < no_fields; i++) {
+	if (i > 0) {
+	    printf(",");
+	}
+	for (j = 0; j < FIELD_NAME_LENGTH; j++) {
+	    fld[i].name[j] = (char) tolower(fld[i].name[j]);
+	}
+	printf("'%s'", fld[i].name);
+    }
+    printf("\r\n");
+}
+
+
+void print_field(char *buf, int length, char type)
+{
+int from, to;
+int i;
+
+    // trim spaces
+    for (from = 0; buf[from] == ' ' && from < length; from++) ;
+    for (to = length; buf[to - 1] == ' ' && to > 0; to--) ;
+
+    switch (type) {
+	case 'L':
+	    if (toupper(buf[from]) == 'Y' || toupper(buf[from]) == 'T') {
+		printf("1");
+	    } else {
+		printf("0");
+	    }
+	    break;
+	case 'N':
+	    if (from >= to) {
+		printf("0");
+	    } else {
+		for (i = from; i < to; i++) {
+		    printf("%c", buf[i]);
+		}
+	    }
+	    break;
+	case 'C':
+	    printf("'");
+	    for (i = from; i < to; i++) {
+		if (buf[i] == '\'') {
+		    buf[i] = '`';
+		} else if (buf[i] == ',') {
+		    buf[i] = ';';
+		}
+		printf("%c", buf[i]);
+	    }
+	    printf("'");
+	    break;
+	default:
+	    Error("unknown field type", -1);
+    }
+}
+
+
+void print_data(int fd, char *tname, int field_names)
+{
+int n, i, j;
+
+    for (i = 0; i < no_records; i++) {
+	n = read(fd, buf, rec_len);
+	buf[rec_len] = '\0';
+	if (buf[0] == DELETED) {
+	    continue;
+	}
+
+	if (field_names) {
+	    printf("INSERT INTO %s (", tname);
+	    for (j = 0, n = 1; j < no_fields; j++) {
+		if (j > 0) {
+		    printf(",");
+		}
+		printf("%s", fld[j].name);
+	    }
+	    printf(")\n");
+	} else {
+	    printf("INSERT INTO %s", tname);
+	}
+
+	printf(" VALUES (");
+	for (j = 0, n = 1; j < no_fields; j++) {
+	    if (j > 0) {
+		printf(",");
+	    }
+	    print_field(&(buf[n]), fld[j].length, fld[j].type);
+	    n += fld[j].length;
+	}
+	printf(")\n");
+    }
+}
+
+
+void print_msaccess_txt(int fd)
+{
+int n, i, j;
+
+    for (i = 0; i < no_records; i++) {
+	n = read(fd, buf, rec_len);
+	buf[rec_len] = '\0';
+	if (buf[0] == DELETED) {
+	    continue;
+	}
+
+	for (j = 0, n = 1; j < no_fields; j++) {
+	    if (j > 0) {
+		printf(",");
+	    }
+	    print_field(&(buf[n]), fld[j].length, fld[j].type);
+	    n += fld[j].length;
+	}
+	printf("\r\n");
+    }
+}
+
 /*
  * 
  */
@@ -185,6 +359,10 @@ void main(int argc, char *argv[]) {
     
     get_header(fd);
 
+    if (header_flag) {
+	print_info(fname);
+	exit(0);
+    }
     
 }
 
