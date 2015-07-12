@@ -26,6 +26,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include "xbase.h"
 
 struct dbf_header hdr;
@@ -161,6 +164,27 @@ void main(int argc, char *argv[]) {
 		break;
 	}
     }
+    if (error_flag || argc < 2) {
+	Error(usage, -1);
+    }
+    if (optind == argc) {
+	Warning("Arquivo de entrada não fornecido.");
+	Error(usage, -1);
+    } else {
+	fname = argv[optind++];
+    }
+    if (optind == argc && !header_flag && !msaccess_flag) {
+	Warning("Faltando o nome da tabela.");
+	Error(usage, -1);
+    } else {
+	tname = argv[optind];
+    }
+    if ((fd = open(fname, O_RDONLY)) < 0) {
+	Error("Não foi possivel abrir o arquivo!", errno);
+    }
+    
+    get_header(fd);
 
+    
 }
 
